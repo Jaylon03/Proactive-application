@@ -11,6 +11,8 @@ interface SignUpModalProps {
 
 const SignUpModal: React.FC<SignUpModalProps> = ({ isOpen, onClose, onSuccess, onSwitchToSignIn }) => {
   const [email, setEmail] = useState('');
+  const [first_name, setFirst_name] = useState('');
+  const [last_name, setLast_name] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -28,7 +30,7 @@ const SignUpModal: React.FC<SignUpModalProps> = ({ isOpen, onClose, onSuccess, o
       if (error) throw error;
       
       setShowConfirmation(true);
-      setError('');
+      setError(''); 
       // Don't close modal yet, show confirmation message
     } catch (err: any) {
       setError(err.message);
@@ -40,6 +42,8 @@ const SignUpModal: React.FC<SignUpModalProps> = ({ isOpen, onClose, onSuccess, o
   const handleClose = () => {
     setEmail('');
     setPassword('');
+    setFirst_name('')
+    setLast_name('')
     setError('');
     setShowConfirmation(false);
     onClose();
@@ -82,6 +86,7 @@ const SignUpModal: React.FC<SignUpModalProps> = ({ isOpen, onClose, onSuccess, o
         ) : (
           <>
             <form onSubmit={handleSubmit} className="space-y-4 mb-6">
+
               <input
                 type="email"
                 value={email}
@@ -90,6 +95,23 @@ const SignUpModal: React.FC<SignUpModalProps> = ({ isOpen, onClose, onSuccess, o
                 className="text-black w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-600 focus:border-transparent"
                 required
               />
+
+              <input
+                type="firstname"
+                value={first_name}
+                onChange={(e) => setFirst_name(e.target.value)}
+                placeholder="First Name"
+                className="text-black w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-600 focus:border-transparent"
+                required
+              /><input
+                type="lastname"
+                value={last_name}
+                onChange={(e) => setLast_name(e.target.value)}
+                placeholder="Last Name"
+                className="text-black w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-600 focus:border-transparent"
+                required
+              />
+
               <input
                 type="password"
                 value={password}

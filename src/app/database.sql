@@ -11,6 +11,36 @@ CREATE TABLE public.profiles (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+CREATE TABLE alerts (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    title TEXT NOT NULL,
+    message TEXT NOT NULL,
+    type TEXT CHECK (type IN ('info', 'warning', 'error', 'success')) DEFAULT 'info',
+    read BOOLEAN DEFAULT false,
+    metadata JSONB DEFAULT '{}',
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Add RLS policies
+ALTER TABLE alerts ENABLE ROW LEVEL SECURITY;
+
+-- Users can only see their own alerts
+CREATE POLICY "Users can view own alerts" ON alerts
+    FOR SELECT USING (auth.uid() = user_id);
+
+-- Users can create their own alerts
+CREATE POLICY "Users can create own alerts" ON alerts
+    FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+-- Users can update their own alerts
+CREATE POLICY "Users can update own alerts" ON alerts
+    FOR UPDATE USING (auth.uid() = user_id);
+
+-- Users can delete their own alerts
+CREATE POLICY "Users can delete own alerts" ON alerts
+    FOR DELETE USING (auth.uid() = user_id);
 
 -- Companies table
 CREATE TABLE public.companies (

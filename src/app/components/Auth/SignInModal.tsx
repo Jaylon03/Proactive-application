@@ -1,5 +1,5 @@
 'use client'
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/app/hooks/useAuth';
 
 interface SignInModalProps {
@@ -10,16 +10,24 @@ interface SignInModalProps {
 }
 
 const SignInModal: React.FC<SignInModalProps> = ({ isOpen, onClose, onSuccess, onSwitchToSignUp }) => {
+  
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const { signIn } = useAuth();
 
+ 
+
+  useEffect(() => {
+    console.log("email state:", email)
+  }, [email])
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
+    
 
     try {
       const { data, error } = await signIn(email, password);
@@ -45,7 +53,7 @@ const SignInModal: React.FC<SignInModalProps> = ({ isOpen, onClose, onSuccess, o
     setError('');
     onClose();
   };
-
+ 
   if (!isOpen) return null;
 
   return (

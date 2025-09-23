@@ -1,119 +1,116 @@
-import { useState, useEffect } from 'react'
-import { supabase } from '@/app/lib/supabase'
+import { useState, useEffect, useCallback } from 'react'
+import { createClient } from '@/app/lib/supabase'
 
-import { useAuth } from './useAuth'
-
-export interface Alert {
-  id: string
-  title: string
-  message: string
-  alert_type: string
-  sent_at: string
-  read_at: string | null
+interface Alert {
+  id: string;
+  title: string;
+  message: string;
+  alert_type: string;
+  sent_at: string;
+  read_at: string | null;
   company: {
-    name: string
-  } | null
+    name: string;
+  } | null;
 }
 
-export const useAlerts = () => {
-  const { user } = useAuth()
+export const useAlerts = (shouldFetch: boolean = true) => {
   const [alerts, setAlerts] = useState<Alert[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (!user) {
+  const fetchAlerts = useCallback(async () => {
+    if (!shouldFetch) {
       setAlerts([])
-      setLoading(false)
       return
     }
 
-    const fetchAlerts = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('alerts')
-          .select(`
-            id,
-            title,
-            message,
-            alert_type,
-            sent_at,
-            read_at,
-            companies!inner(name)
-          `)
-          .eq('user_id', user.id)
-          .order('sent_at', { ascending: false })
-          .limit(10)
-
-        if (error) throw error
-        
-        // Transform the data to match our Alert interface
-        const transformedAlerts = data?.map(alert => ({
-          id: alert.id,
-          title: alert.title,
-          message: alert.message,
-          alert_type: alert.alert_type,
-          sent_at: alert.sent_at,
-          read_at: alert.read_at,
-          company: Array.isArray(alert.companies) && alert.companies.length > 0 ? { name: alert.companies[0].name } : null
-        })) || []
-        
-        setAlerts(transformedAlerts)
-      } catch (err) {
-        console.error('Error fetching alerts:', err)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchAlerts()
-
-    // Set up real-time subscription for new alerts
-    const channel = supabase
-      .channel('user-alerts')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'alerts',
-          filter: `user_id=eq.${user.id}`,
-        },
-        (payload) => {
-          // Add new alert to the beginning of the list
-          setAlerts(prev => [payload.new as Alert, ...prev.slice(0, 9)])
-        }
-      )
-      .subscribe()
-
-    return () => {
-      supabase.removeChannel(channel)
-    }
-  }, [user])
-
-  const markAsRead = async (alertId: string) => {
     try {
-      const { error } = await supabase
-        .from('alerts')
-        .update({ read_at: new Date().toISOString() })
-        .eq('id', alertId)
-
-      if (error) throw error
+      // Create client instance
+      const supabase = createClient()
       
-      setAlerts(prev => 
-        prev.map(alert => 
+      // Check client-side session first
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session?.user) {
+        console.log('No user session, skipping alerts fetch')
+        setAlerts([])
+        return
+      }
+
+      setLoading(true)
+      setError(null)
+      
+      console.log('Fetching alerts for user:', session.user.id)
+      
+      const response = await fetch('/api/alerts', {
+        method: 'GET',
+        credentials: "include",
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache',
+        },
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('API Error:', {
+          status: response.status,
+          statusText: response.statusText,
+          body: errorText
+        })
+        
+        if (response.status === 401) {
+          throw new Error('Authentication required')
+        }
+        throw new Error(`Failed to fetch alerts: ${response.status}`)
+      }
+
+      const data = await response.json()
+      setAlerts(data.alerts || [])
+    } catch (error) {
+      console.error('Error fetching alerts:', error)
+      setError(error instanceof Error ? error.message : 'Failed to fetch alerts')
+      setAlerts([])
+    } finally {
+      setLoading(false)
+    }
+  }, [shouldFetch])
+
+  const markAsRead = useCallback(async (alertId: string) => {
+    if (!shouldFetch) return
+    
+    try {
+      // Create client instance
+      const supabase = createClient()
+      
+      // Check session before making request
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.user) return
+
+      const response = await fetch('/api/alerts', {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ alertId }),
+      })
+
+      if (response.ok) {
+        setAlerts((prev: Alert[]) => prev.map(alert => 
           alert.id === alertId 
             ? { ...alert, read_at: new Date().toISOString() }
             : alert
-        )
-      )
-    } catch (err) {
-      console.error('Error marking alert as read:', err)
+        ))
+      }
+    } catch (error) {
+      console.error('Error marking alert as read:', error)
     }
-  }
+  }, [shouldFetch])
 
-  return {
-    alerts,
-    loading,
-    markAsRead
-  }
+  useEffect(() => {
+    fetchAlerts()
+  }, [fetchAlerts])
+
+  return { alerts, loading, error, markAsRead }
 }
