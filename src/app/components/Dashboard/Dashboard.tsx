@@ -1,9 +1,11 @@
 'use client'
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { User } from '@supabase/supabase-js';
 import { useCompanies } from '@/app/hooks/useCompanies';
 import { useTrackedCompanies } from '@/app/hooks/useTrackedCompanies';
 import { useAlerts } from '@/app/hooks/useAlerts';
+import HiringSignalsCard from '@/app/components/HiringSignalsCard/HiringSignalsCard'
+import { useHiringSignals } from '@/app/hooks/useHiringSignals'
 
 // Types
 interface Company {
@@ -102,10 +104,28 @@ const CompanyCard: React.FC<CompanyCardProps> = ({ company, onTrack, onUntrack, 
 
 // Dashboard Component
 const Dashboard: React.FC<DashboardProps> = ({ user, onSignOut }) => {
+  const [isReady, setIsReady] = useState(false);
+  
+  // Add a small delay to ensure session is fully established
+  useEffect(() => {
+    if (user) {
+      // Small delay to ensure server-side session is established
+      const timer = setTimeout(() => {
+        setIsReady(true);
+      }, 100);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [user]);
+  
+  // Only call data hooks when user is authenticated and ready
+  const shouldFetchData = !!user && isReady;
+  
   const { companies, loading: companiesLoading } = useCompanies();
   const { trackedCompanies, trackCompany, untrackCompany } = useTrackedCompanies();
-  const { alerts, markAsRead } = useAlerts();
-
+  const { alerts, markAsRead } = useAlerts(shouldFetchData);
+  const { signals } = useHiringSignals();
+  
   const handleTrackCompany = async (companyId: string) => {
     await trackCompany(companyId);
   };
@@ -116,6 +136,18 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onSignOut }) => {
 
   // Handle the possibility of undefined email
   const userEmail = user.email || 'No email provided';
+
+  // Show loading state while authentication is being established
+  if (!user || !isReady) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -147,22 +179,27 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onSignOut }) => {
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-8">
             {/* Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               <div className="bg-white rounded-xl p-6 shadow-sm">
                 <div className="text-3xl font-bold text-indigo-600">{trackedCompanies.size}</div>
                 <div className="text-gray-600">Companies Tracked</div>
               </div>
               <div className="bg-white rounded-xl p-6 shadow-sm">
-                <div className="text-3xl font-bold text-green-600">{alerts.length}</div>
+                <div className="text-3xl font-bold text-green-600">{signals.length}</div>
+                <div className="text-gray-600">Hiring Signals</div>
+              </div>
+              <div className="bg-white rounded-xl p-6 shadow-sm">
+                <div className="text-3xl font-bold text-orange-600">{alerts.length}</div>
                 <div className="text-gray-600">Recent Alerts</div>
               </div>
               <div className="bg-white rounded-xl p-6 shadow-sm">
                 <div className="text-3xl font-bold text-purple-600">
-                  {alerts.filter(alert => alert.alert_type === 'job_opportunity').length}
+                  {alerts.filter(alert => alert.alert_type === 'hiring_signal').length}
                 </div>
-                <div className="text-gray-600">Job Opportunities</div>
+                <div className="text-gray-600">Signal Alerts</div>
               </div>
             </div>
+            <HiringSignalsCard />
 
             {/* Company Tracking */}
             <div className="bg-white rounded-2xl shadow-sm p-6">
