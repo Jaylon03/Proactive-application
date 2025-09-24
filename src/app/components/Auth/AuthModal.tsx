@@ -12,6 +12,8 @@ interface AuthModalProps {
 const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode, onSuccess }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [first_name, setFirst_name] = useState('')
+  const [last_name, setLast_name] = useState('')
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [switchMode, setSwitchMode] = useState(mode);
@@ -24,7 +26,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, mode, onSuccess 
 
     try {
       const { data, error } = switchMode === 'signup' 
-        ? await signUp(email, password)
+        ? await signUp(email, first_name, last_name, password)
         : await signIn(email, password);
 
       if (error) throw error;
