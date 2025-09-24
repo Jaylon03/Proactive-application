@@ -6,7 +6,7 @@ import { supabase } from '@/app/lib/supabaseClient'
 interface AuthContextType {
   user: User | null
   loading: boolean
-  signUp: (email: string, password: string) => Promise<{ data: any; error: any }>
+  signUp: (email: string,first_name: string, last_name:string, password: string) => Promise<{ data: any; error: any }>
   signIn: (email: string, password: string) => Promise<{ data: any; error: any }>
   signOut: () => Promise<{ error: any }>
 }
@@ -46,15 +46,28 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     return () => subscription.unsubscribe()
   }, [])
 
-  const signUp = async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signUp({
+  const signUp = async (
+    email: string,
+    first_name: string,
+    last_name: string,
+    password: string
+  ) => {
+    // Create auth user with metadata - let the trigger handle profile creation
+    const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        emailRedirectTo: `${window.location.origin}/dashboard`
-      }
+        emailRedirectTo: `${window.location.origin}/dashboard`,
+        data: {
+            first_name: first_name,
+            last_name: last_name
+        }
+      },
     })
-    return { data, error }
+  
+    if (authError) return { data: null, error: authError }
+  
+    return { data: { auth: authData }, error: null }
   }
 
   const signIn = async (email: string, password: string) => {

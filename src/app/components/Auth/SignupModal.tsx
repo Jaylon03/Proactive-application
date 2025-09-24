@@ -23,15 +23,22 @@ const SignUpModal: React.FC<SignUpModalProps> = ({ isOpen, onClose, onSuccess, o
     e.preventDefault();
     setLoading(true);
     setError('');
-
+  
     try {
-      const { data, error } = await signUp(email, password);
-
-      if (error) throw error;
+      const { data, error } = await signUp(email, first_name, last_name, password);
       
+      if (error) {
+        throw error; // profile insert failed
+      }
+      console.log('profile insert')
+      // Optional: check if auth data exists
+      if (!data?.auth?.user) {
+        throw new Error('Signup failed');
+      }
+  
       setShowConfirmation(true);
-      setError(''); 
-      // Don't close modal yet, show confirmation message
+      console.log('confirmation')
+      setError(''); // Clear any previous error
     } catch (err: any) {
       setError(err.message);
     } finally {
