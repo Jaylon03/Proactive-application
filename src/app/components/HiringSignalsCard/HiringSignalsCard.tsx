@@ -54,7 +54,11 @@ const formatTimeAgo = (dateString: string) => {
 }
 
 const HiringSignalsCard: React.FC = () => {
-  const { signals, loading, error } = useHiringSignals()
+  const { signals, loading, error } = useHiringSignals() as {
+    signals: HiringSignal[]
+    loading: boolean
+    error: string | null
+  }
 
   if (loading) {
     return (

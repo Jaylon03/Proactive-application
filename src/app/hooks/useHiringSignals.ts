@@ -19,44 +19,33 @@ interface HiringSignal {
   }
 }
 
-export const useHiringSignals = (companyId?: string) => {
-  const [signals, setSignals] = useState<HiringSignal[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+export const useHiringSignals = () => {
+  const [signals, setSignals] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const fetchSignals = async (companyId: string) => {
-  try {
-    const response = await fetch(`/api/hiring-signals/${companyId}`);
-    
-    if (!response.ok) {
-      // Get more detailed error information
-      const errorText = await response.text();
-      console.error('API Error:', {
-        status: response.status,
-        statusText: response.statusText,
-        body: errorText
-      });
-      throw new Error(`Failed to fetch hiring signals: ${response.status} ${response.statusText}`);
+  const fetchSignals = async () => {
+    try {
+      console.log('Fetching hiring signals...');
+      const response = await fetch('/api/hiring-signals'); // No companyId needed
+      const data = await response.json();
+      setSignals(data.signals || []);
+    } catch (err) {
+      console.error('Error fetching signals:', err);
+      setError(err instanceof Error ? err.message : String(err));
     }
-
-    const data = await response.json();
-    return data;
-  } catch (error) {
-    console.error('Fetch error:', error);
-    throw error;
-  }
-};
+  };
 
   useEffect(() => {
-    if (companyId) {
-      fetchSignals(companyId);
-    }
-  }, [companyId])
+    fetchSignals();
+  }, []);
 
-  return {
-    signals,
-    loading,
+  return { 
+    signals, 
+    loading, 
     error,
-    refetch: fetchSignals
-  }
-}
+    refetch: fetchSignals // This function takes NO parameters
+  };
+};
+
+ 
