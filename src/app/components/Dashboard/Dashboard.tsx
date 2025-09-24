@@ -124,14 +124,50 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onSignOut }) => {
   const { companies, loading: companiesLoading } = useCompanies();
   const { trackedCompanies, trackCompany, untrackCompany } = useTrackedCompanies();
   const { alerts, markAsRead } = useAlerts(shouldFetchData);
-  const { signals } = useHiringSignals();
   
+  // 🔧 FIXED: Add refetch function to hiring signals hook
+  const { signals, refetch: refetchHiringSignals } = useHiringSignals();
+  
+  // 🔧 FIXED: Modified track company function to refresh hiring signals
   const handleTrackCompany = async (companyId: string) => {
-    await trackCompany(companyId);
+    console.log('🔄 Dashboard: Starting to track company:', companyId);
+    
+    try {
+      await trackCompany(companyId);
+      console.log('✅ Dashboard: Company tracked successfully');
+      
+      // 🔧 KEY FIX: Refresh hiring signals after tracking
+      console.log('🔄 Dashboard: Refreshing hiring signals after tracking...');
+      await refetchHiringSignals();
+      console.log('✅ Dashboard: Hiring signals refreshed');
+      
+    } catch (error) {
+      console.error('❌ Dashboard: Error tracking company:', error);
+    }
   };
 
+  // 🔧 FIXED: Modified untrack company function to refresh hiring signals
   const handleUntrackCompany = async (companyId: string) => {
-    await untrackCompany(companyId);
+    console.log('🔄 Dashboard: Starting to untrack company:', companyId);
+    
+    try {
+      await untrackCompany(companyId);
+      console.log('✅ Dashboard: Company untracked successfully');
+      
+      // 🔧 KEY FIX: Refresh hiring signals after untracking
+      console.log('🔄 Dashboard: Refreshing hiring signals after untracking...');
+      await refetchHiringSignals();
+      console.log('✅ Dashboard: Hiring signals refreshed');
+      
+    } catch (error) {
+      console.error('❌ Dashboard: Error untracking company:', error);
+    }
+  };
+
+  // 🔧 ADDED: Manual refresh function for testing
+  const handleManualRefresh = async () => {
+    console.log('🔄 Dashboard: Manual refresh triggered');
+    await refetchHiringSignals();
   };
 
   // Handle the possibility of undefined email
@@ -162,6 +198,14 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onSignOut }) => {
               <span className="text-xl font-bold text-gray-900">EarlyJob Alerts</span>
             </div>
             <div className="flex items-center space-x-4">
+              {/* 🔧 ADDED: Manual refresh button for testing */}
+              <button
+                onClick={handleManualRefresh}
+                className="text-indigo-600 hover:text-indigo-800 transition-colors text-sm"
+                title="Refresh hiring signals"
+              >
+                🔄 Refresh Signals
+              </button>
               <span className="text-gray-700">Welcome, {userEmail}</span>
               <button
                 onClick={onSignOut}
@@ -199,11 +243,20 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onSignOut }) => {
                 <div className="text-gray-600">Signal Alerts</div>
               </div>
             </div>
+            
+            {/* 🔧 MODIFIED: Pass refetch function to HiringSignalsCard if needed */}
             <HiringSignalsCard />
 
             {/* Company Tracking */}
             <div className="bg-white rounded-2xl shadow-sm p-6">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">Track Companies</h2>
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-2xl font-bold text-gray-900">Track Companies</h2>
+                {/* 🔧 ADDED: Debug info */}
+                <div className="text-sm text-gray-500">
+                  {signals.length} hiring signals • {trackedCompanies.size} tracked
+                </div>
+              </div>
+              
               {companiesLoading ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {[1, 2, 3, 4].map(i => (
