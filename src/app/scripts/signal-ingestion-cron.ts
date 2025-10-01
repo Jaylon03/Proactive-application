@@ -8,10 +8,10 @@ dotenv.config({ path: '.env.local' })
 
 // Environment variables
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
+const SUPABASE_SERVICE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
 if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
-  console.error('❌ Missing Supabase environment variables')
+  console.error(' Missing Supabase environment variables')
   console.log('Make sure you have these in your .env.local:')
   console.log('- NEXT_PUBLIC_SUPABASE_URL')
   console.log('- SUPABASE_SERVICE_ROLE_KEY')

@@ -3,7 +3,7 @@ import { createClient } from '@/app/lib/supabase-server'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { companyId: string } }
+  { params }: { params: Promise<{ companyId: string }> }
 ) {
   try {
     const supabase = await createClient()
@@ -13,9 +13,12 @@ export async function GET(
     
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      
     }
+  
 
-    const { companyId } = params
+    // Await params in Next.js 15
+    const { companyId } = await params
 
     // Get query parameters
     const { searchParams } = new URL(request.url)
