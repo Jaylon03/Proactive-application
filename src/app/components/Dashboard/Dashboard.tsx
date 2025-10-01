@@ -1,189 +1,198 @@
+// src/app/components/Dashboard/Dashboard.tsx
 'use client'
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { User } from '@supabase/supabase-js';
-import { useCompanies } from '@/app/hooks/useCompanies';
-import { useTrackedCompanies } from '@/app/hooks/useTrackedCompanies';
-import { useAlerts } from '@/app/hooks/useAlerts';
-import HiringSignalsCard from '@/app/components/HiringSignalsCard/HiringSignalsCard'
-import { useHiringSignals } from '@/app/hooks/useHiringSignals'
-
-// Types
-interface Company {
-  id: string;
-  name: string;
-  industry: string | null;
-  employee_count: number | null;
-  website?: string | null;
-  size_category?: string | null;
-  description?: string | null;
-}
-
-interface Alert {
-  id: string;
-  title: string;
-  message: string;
-  alert_type: string;
-  sent_at: string;
-  read_at: string | null;
-  company: {
-    name: string;
-  } | null;
-}
+import { useJobs, JobPosting } from '@/app/hooks/useJobs';
+import { useSavedJobs } from '@/app/hooks/useSavedJobs';
 
 interface DashboardProps {
   user: User;
   onSignOut: () => void;
 }
 
-interface CompanyCardProps {
-  company: Company;
-  onTrack: (companyId: string) => void;
-  onUntrack: (companyId: string) => void;
-  isTracked: boolean;
-}
+// Helper function to format salary
+const formatSalary = (min: number | null, max: number | null, currency: string = 'USD') => {
+  if (!min && !max) return 'Salary not specified';
+  if (min && max) return `$${(min / 1000).toFixed(0)}k - $${(max / 1000).toFixed(0)}k ${currency}`;
+  if (min) return `$${(min / 1000).toFixed(0)}k+ ${currency}`;
+  if (max) return `Up to $${(max / 1000).toFixed(0)}k ${currency}`;
+  return 'Salary not specified';
+};
 
 // Helper function to format time ago
-const formatTimeAgo = (dateString: string) => {
+const formatTimeAgo = (dateString: string | null) => {
+  if (!dateString) return 'Recently';
   const date = new Date(dateString);
   const now = new Date();
   const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
   
   if (diffInSeconds < 60) return 'just now';
-  if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} minutes ago`;
-  if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours ago`;
-  return `${Math.floor(diffInSeconds / 86400)} days ago`;
+  if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+  if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+  return `${Math.floor(diffInSeconds / 86400)}d ago`;
 };
 
-// Company Card Component
-const CompanyCard: React.FC<CompanyCardProps> = ({ company, onTrack, onUntrack, isTracked }) => {
-  const [loading, setLoading] = useState(false);
+// Job Card Component
+const JobCard: React.FC<{ 
+  job: JobPosting; 
+  onSave: (jobId: string) => void;
+  isSaved: boolean;
+}> = ({ job, onSave, isSaved }) => {
+  const [saving, setSaving] = useState(false);
 
-  const handleTrackToggle = async () => {
-    setLoading(true);
-    try {
-      if (isTracked) {
-        await onUntrack(company.id);
-      } else {
-        await onTrack(company.id);
-      }
-    } finally {
-      setLoading(false);
-    }
+  const handleSave = async () => {
+    setSaving(true);
+    await onSave(job.id);
+    setSaving(false);
   };
 
   return (
     <div className="bg-white border border-gray-200 rounded-xl p-6 hover:shadow-lg transition-all duration-300">
       <div className="flex items-start justify-between mb-4">
         <div className="flex-1">
-          <h3 className="text-lg font-semibold text-gray-900">{company.name}</h3>
-          {company.industry && (
-            <p className="text-gray-600">{company.industry}</p>
+          <div className="flex items-center space-x-2 mb-2">
+            {job.companies.logo_url && (
+              <img 
+                src={job.companies.logo_url} 
+                alt={job.companies.name}
+                className="w-8 h-8 rounded"
+              />
+            )}
+            <h3 className="text-lg font-semibold text-gray-900">{job.title}</h3>
+          </div>
+          
+          <div className="flex items-center space-x-2 mb-3">
+            <span className="text-indigo-600 font-medium">{job.companies.name}</span>
+            {job.companies.industry && (
+              <>
+                <span className="text-gray-300">•</span>
+                <span className="text-gray-600 text-sm">{job.companies.industry}</span>
+              </>
+            )}
+          </div>
+
+          <div className="flex flex-wrap gap-2 mb-3">
+            <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
+              {job.job_type}
+            </span>
+            <span className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-xs font-medium">
+              {job.seniority_level}
+            </span>
+            {job.is_remote && (
+              <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">
+                🌍 Remote
+              </span>
+            )}
+            {job.location && !job.is_remote && (
+              <span className="px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-xs font-medium">
+                📍 {job.location}
+              </span>
+            )}
+          </div>
+
+          {job.tech_stack && job.tech_stack.length > 0 && (
+            <div className="flex flex-wrap gap-1 mb-3">
+              {job.tech_stack.slice(0, 5).map((tech, idx) => (
+                <span key={idx} className="px-2 py-1 bg-gray-50 text-gray-700 rounded text-xs border border-gray-200">
+                  {tech}
+                </span>
+              ))}
+              {job.tech_stack.length > 5 && (
+                <span className="px-2 py-1 text-gray-500 text-xs">
+                  +{job.tech_stack.length - 5} more
+                </span>
+              )}
+            </div>
           )}
-          {company.employee_count && (
-            <p className="text-sm text-gray-500">{company.employee_count.toLocaleString()} employees</p>
-          )}
-          {company.description && (
-            <p className="text-sm text-gray-600 mt-2 line-clamp-2">{company.description}</p>
-          )}
+
+          <div className="text-sm text-gray-600 mb-2">
+            💰 {formatSalary(job.salary_min, job.salary_max, job.salary_currency)}
+          </div>
+
+          <div className="text-xs text-gray-400">
+            Posted {formatTimeAgo(job.posted_date)}
+          </div>
         </div>
-        <button
-          onClick={handleTrackToggle}
-          disabled={loading}
-          className={`px-4 py-2 rounded-lg font-medium transition-all ml-4 ${
-            isTracked
-              ? 'bg-green-100 text-green-700 border border-green-200'
-              : 'bg-indigo-600 text-white hover:bg-indigo-700'
-          } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
-        >
-          {loading ? '...' : (isTracked ? '✓ Tracking' : 'Track')}
-        </button>
+
+        <div className="flex flex-col space-y-2">
+          <button
+            onClick={handleSave}
+            disabled={saving || isSaved}
+            className={`px-4 py-2 rounded-lg font-medium transition-all ${
+              isSaved
+                ? 'bg-green-100 text-green-700 border border-green-200'
+                : 'bg-indigo-600 text-white hover:bg-indigo-700'
+            } ${saving ? 'opacity-50 cursor-not-allowed' : ''}`}
+          >
+            {saving ? '...' : (isSaved ? '✓ Saved' : 'Save')}
+          </button>
+          <a
+            href={job.source_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-4 py-2 text-center border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm"
+          >
+            View Job →
+          </a>
+        </div>
       </div>
+
+      {job.description && (
+        <p className="text-sm text-gray-600 line-clamp-2 mt-2">
+          {job.description}
+        </p>
+      )}
     </div>
   );
 };
 
 // Dashboard Component
 const Dashboard: React.FC<DashboardProps> = ({ user, onSignOut }) => {
-  const [isReady, setIsReady] = useState(false);
-  
-  // Add a small delay to ensure session is fully established
-  useEffect(() => {
-    if (user) {
-      // Small delay to ensure server-side session is established
-      const timer = setTimeout(() => {
-        setIsReady(true);
-      }, 100);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [user]);
-  
-  // Only call data hooks when user is authenticated and ready
-  const shouldFetchData = !!user && isReady;
-  
-  const { companies, loading: companiesLoading } = useCompanies();
-  const { trackedCompanies, trackCompany, untrackCompany } = useTrackedCompanies();
-  const { alerts, markAsRead } = useAlerts(shouldFetchData);
-  
-  // 🔧 FIXED: Add refetch function to hiring signals hook
-  const { signals, refetch: refetchHiringSignals } = useHiringSignals();
-  
-  // 🔧 FIXED: Modified track company function to refresh hiring signals
-  const handleTrackCompany = async (companyId: string) => {
-    console.log('🔄 Dashboard: Starting to track company:', companyId);
-    
-    try {
-      await trackCompany(companyId);
-      console.log('✅ Dashboard: Company tracked successfully');
-      
-      // 🔧 KEY FIX: Refresh hiring signals after tracking
-      console.log('🔄 Dashboard: Refreshing hiring signals after tracking...');
-      await refetchHiringSignals();
-      console.log('✅ Dashboard: Hiring signals refreshed');
-      
-    } catch (error) {
-      console.error('❌ Dashboard: Error tracking company:', error);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [locationFilter, setLocationFilter] = useState('');
+  const [remoteOnly, setRemoteOnly] = useState(false);
+  const [jobTypeFilter, setJobTypeFilter] = useState('');
+  const [activeTab, setActiveTab] = useState<'all' | 'saved'>('all');
+
+  const { jobs, loading: jobsLoading, refetch: refetchJobs } = useJobs({
+    search: searchQuery,
+    location: locationFilter,
+    remote: remoteOnly || undefined,
+    job_type: jobTypeFilter,
+    limit: 50,
+  });
+
+  const { 
+    savedJobs, 
+    loading: savedJobsLoading, 
+    saveJob, 
+    updateSavedJob,
+    removeSavedJob 
+  } = useSavedJobs();
+
+  // Create a Set of saved job IDs for quick lookup
+  const savedJobIds = new Set(savedJobs.map(sj => sj.job_id));
+
+  const handleSaveJob = async (jobId: string) => {
+    const result = await saveJob(jobId);
+    if (result.success) {
+      // Job saved successfully
+      refetchJobs(); // Optional: refresh to update UI
     }
   };
 
-  // 🔧 FIXED: Modified untrack company function to refresh hiring signals
-  const handleUntrackCompany = async (companyId: string) => {
-    console.log('🔄 Dashboard: Starting to untrack company:', companyId);
-    
-    try {
-      await untrackCompany(companyId);
-      console.log('✅ Dashboard: Company untracked successfully');
-      
-      // 🔧 KEY FIX: Refresh hiring signals after untracking
-      console.log('🔄 Dashboard: Refreshing hiring signals after untracking...');
-      await refetchHiringSignals();
-      console.log('✅ Dashboard: Hiring signals refreshed');
-      
-    } catch (error) {
-      console.error('❌ Dashboard: Error untracking company:', error);
-    }
+  const handleSearch = () => {
+    refetchJobs();
   };
 
-  // 🔧 ADDED: Manual refresh function for testing
-  const handleManualRefresh = async () => {
-    console.log('🔄 Dashboard: Manual refresh triggered');
-    await refetchHiringSignals();
+  const handleClearFilters = () => {
+    setSearchQuery('');
+    setLocationFilter('');
+    setRemoteOnly(false);
+    setJobTypeFilter('');
   };
 
-  // Handle the possibility of undefined email
   const userEmail = user.email || 'No email provided';
-
-  // Show loading state while authentication is being established
-  if (!user || !isReady) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading dashboard...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -195,21 +204,13 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onSignOut }) => {
               <div className="w-8 h-8 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold text-sm">EJ</span>
               </div>
-              <span className="text-xl font-bold text-gray-900">EarlyJob Alerts</span>
+              <span className="text-xl font-bold text-gray-900">Entry-Level Jobs</span>
             </div>
             <div className="flex items-center space-x-4">
-              {/* 🔧 ADDED: Manual refresh button for testing */}
-              <button
-                onClick={handleManualRefresh}
-                className="text-indigo-600 hover:text-indigo-800 transition-colors text-sm"
-                title="Refresh hiring signals"
-              >
-                🔄 Refresh Signals
-              </button>
-              <span className="text-gray-700">Welcome, {userEmail}</span>
+              <span className="text-gray-700 text-sm">Welcome, {userEmail}</span>
               <button
                 onClick={onSignOut}
-                className="text-gray-600 hover:text-gray-900 transition-colors"
+                className="text-gray-600 hover:text-gray-900 transition-colors text-sm"
               >
                 Sign Out
               </button>
@@ -219,106 +220,243 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onSignOut }) => {
       </header>
 
       <div className="max-w-7xl mx-auto px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Main Content */}
-          <div className="lg:col-span-2 space-y-8">
-            {/* Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              <div className="bg-white rounded-xl p-6 shadow-sm">
-                <div className="text-3xl font-bold text-indigo-600">{trackedCompanies.size}</div>
-                <div className="text-gray-600">Companies Tracked</div>
+        {/* Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <div className="bg-white rounded-xl p-6 shadow-sm">
+            <div className="text-3xl font-bold text-indigo-600">{jobs.length}</div>
+            <div className="text-gray-600">Active Jobs</div>
+          </div>
+          <div className="bg-white rounded-xl p-6 shadow-sm">
+            <div className="text-3xl font-bold text-green-600">{savedJobs.length}</div>
+            <div className="text-gray-600">Saved Jobs</div>
+          </div>
+          <div className="bg-white rounded-xl p-6 shadow-sm">
+            <div className="text-3xl font-bold text-orange-600">
+              {savedJobs.filter(sj => sj.status === 'applied').length}
+            </div>
+            <div className="text-gray-600">Applications</div>
+          </div>
+          <div className="bg-white rounded-xl p-6 shadow-sm">
+            <div className="text-3xl font-bold text-purple-600">
+              {savedJobs.filter(sj => sj.status === 'interviewing').length}
+            </div>
+            <div className="text-gray-600">Interviews</div>
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div className="bg-white rounded-2xl shadow-sm mb-6">
+          <div className="border-b border-gray-200">
+            <div className="flex space-x-8 px-6">
+              <button
+                onClick={() => setActiveTab('all')}
+                className={`py-4 border-b-2 font-medium transition-colors ${
+                  activeTab === 'all'
+                    ? 'border-indigo-600 text-indigo-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                All Jobs ({jobs.length})
+              </button>
+              <button
+                onClick={() => setActiveTab('saved')}
+                className={`py-4 border-b-2 font-medium transition-colors ${
+                  activeTab === 'saved'
+                    ? 'border-indigo-600 text-indigo-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Saved Jobs ({savedJobs.length})
+              </button>
+            </div>
+          </div>
+
+          {/* Search and Filters */}
+          {activeTab === 'all' && (
+            <div className="p-6 border-b border-gray-200">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                  placeholder="Search jobs..."
+                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-600 focus:border-transparent"
+                />
+                <input
+                  type="text"
+                  value={locationFilter}
+                  onChange={(e) => setLocationFilter(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+                  placeholder="Location..."
+                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-600 focus:border-transparent"
+                />
+                <select
+                  value={jobTypeFilter}
+                  onChange={(e) => setJobTypeFilter(e.target.value)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-600 focus:border-transparent"
+                >
+                  <option value="">All Job Types</option>
+                  <option value="full-time">Full-Time</option>
+                  <option value="internship">Internship</option>
+                  <option value="contract">Contract</option>
+                </select>
+                <label className="flex items-center space-x-2 px-4 py-2 border border-gray-300 rounded-lg cursor-pointer hover:bg-gray-50">
+                  <input
+                    type="checkbox"
+                    checked={remoteOnly}
+                    onChange={(e) => setRemoteOnly(e.target.checked)}
+                    className="rounded text-indigo-600 focus:ring-indigo-600"
+                  />
+                  <span className="text-gray-700">Remote Only</span>
+                </label>
               </div>
-              <div className="bg-white rounded-xl p-6 shadow-sm">
-                <div className="text-3xl font-bold text-green-600">{signals.length}</div>
-                <div className="text-gray-600">Hiring Signals</div>
-              </div>
-              <div className="bg-white rounded-xl p-6 shadow-sm">
-                <div className="text-3xl font-bold text-orange-600">{alerts.length}</div>
-                <div className="text-gray-600">Recent Alerts</div>
-              </div>
-              <div className="bg-white rounded-xl p-6 shadow-sm">
-                <div className="text-3xl font-bold text-purple-600">
-                  {alerts.filter(alert => alert.alert_type === 'hiring_signal').length}
-                </div>
-                <div className="text-gray-600">Signal Alerts</div>
+              <div className="flex space-x-3">
+                <button
+                  onClick={handleSearch}
+                  className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                >
+                  Search
+                </button>
+                <button
+                  onClick={handleClearFilters}
+                  className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Clear Filters
+                </button>
               </div>
             </div>
-            
-            {/* 🔧 MODIFIED: Pass refetch function to HiringSignalsCard if needed */}
-            <HiringSignalsCard />
+          )}
+        </div>
 
-            {/* Company Tracking */}
-            <div className="bg-white rounded-2xl shadow-sm p-6">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-2xl font-bold text-gray-900">Track Companies</h2>
-                {/* 🔧 ADDED: Debug info */}
-                <div className="text-sm text-gray-500">
-                  {signals.length} hiring signals • {trackedCompanies.size} tracked
-                </div>
-              </div>
-              
-              {companiesLoading ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {[1, 2, 3, 4].map(i => (
-                    <div key={i} className="bg-gray-100 rounded-xl h-32 animate-pulse"></div>
+        {/* Content */}
+        <div className="bg-white rounded-2xl shadow-sm p-6">
+          {activeTab === 'all' ? (
+            <>
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">
+                Entry-Level Software Engineering Jobs
+              </h2>
+              {jobsLoading ? (
+                <div className="grid grid-cols-1 gap-4">
+                  {[1, 2, 3].map(i => (
+                    <div key={i} className="bg-gray-100 rounded-xl h-48 animate-pulse"></div>
                   ))}
                 </div>
+              ) : jobs.length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="text-4xl mb-4">🔍</div>
+                  <p className="text-gray-500 mb-2">No jobs found</p>
+                  <p className="text-sm text-gray-400">Try adjusting your filters</p>
+                </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {companies.map(company => (
-                    <CompanyCard
-                      key={company.id}
-                      company={company}
-                      onTrack={handleTrackCompany}
-                      onUntrack={handleUntrackCompany}
-                      isTracked={trackedCompanies.has(company.id)}
+                <div className="grid grid-cols-1 gap-4">
+                  {jobs.map(job => (
+                    <JobCard
+                      key={job.id}
+                      job={job}
+                      onSave={handleSaveJob}
+                      isSaved={savedJobIds.has(job.id)}
                     />
                   ))}
                 </div>
               )}
-            </div>
-          </div>
-
-          {/* Sidebar */}
-          <div className="space-y-6">
-            {/* Recent Alerts */}
-            <div className="bg-white rounded-2xl shadow-sm p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Alerts</h3>
-              <div className="space-y-3">
-                {alerts.length === 0 ? (
-                  <p className="text-gray-500 text-sm">No alerts yet. Start tracking companies to get notified!</p>
-                ) : (
-                  alerts.map(alert => (
-                    <div 
-                      key={alert.id} 
-                      className={`p-3 rounded-lg border cursor-pointer transition-colors ${
-                        alert.read_at ? 'bg-gray-50 border-gray-200' : 'bg-indigo-50 border-indigo-100'
-                      }`}
-                      onClick={() => !alert.read_at && markAsRead(alert.id)}
-                    >
-                      <div className="font-medium text-gray-900 text-sm">{alert.title}</div>
-                      <div className="text-gray-600 text-xs mt-1">{alert.message}</div>
-                      {alert.company && (
-                        <div className="text-indigo-600 text-xs mt-1 font-medium">{alert.company.name}</div>
-                      )}
-                      <div className="text-gray-400 text-xs mt-2">{formatTimeAgo(alert.sent_at)}</div>
+            </>
+          ) : (
+            <>
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">
+                Your Saved Jobs
+              </h2>
+              {savedJobsLoading ? (
+                <div className="grid grid-cols-1 gap-4">
+                  {[1, 2, 3].map(i => (
+                    <div key={i} className="bg-gray-100 rounded-xl h-48 animate-pulse"></div>
+                  ))}
+                </div>
+              ) : savedJobs.length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="text-4xl mb-4">📌</div>
+                  <p className="text-gray-500 mb-2">No saved jobs yet</p>
+                  <p className="text-sm text-gray-400">Start saving jobs from the "All Jobs" tab</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {savedJobs.map(savedJob => (
+                    <div key={savedJob.id} className="border border-gray-200 rounded-xl p-6 hover:shadow-lg transition-all">
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="flex-1">
+                          <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                            {savedJob.job_postings.title}
+                          </h3>
+                          <p className="text-indigo-600 font-medium mb-2">
+                            {savedJob.job_postings.companies.name}
+                          </p>
+                          <div className="flex items-center space-x-2 mb-3">
+                            <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                              savedJob.status === 'applied' ? 'bg-blue-100 text-blue-800' :
+                              savedJob.status === 'interviewing' ? 'bg-purple-100 text-purple-800' :
+                              savedJob.status === 'offer' ? 'bg-green-100 text-green-800' :
+                              savedJob.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}>
+                              {savedJob.status}
+                            </span>
+                            {savedJob.application_date && (
+                              <span className="text-xs text-gray-500">
+                                Applied: {new Date(savedJob.application_date).toLocaleDateString()}
+                              </span>
+                            )}
+                          </div>
+                          {savedJob.notes && (
+                            <p className="text-sm text-gray-600 italic mb-2">
+                              📝 {savedJob.notes}
+                            </p>
+                          )}
+                          {savedJob.job_postings.location && (
+                            <p className="text-sm text-gray-500">
+                              📍 {savedJob.job_postings.location}
+                            </p>
+                          )}
+                          {savedJob.job_postings.salary_min && savedJob.job_postings.salary_max && (
+                            <p className="text-sm text-gray-600">
+                              💰 {formatSalary(savedJob.job_postings.salary_min, savedJob.job_postings.salary_max)}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex flex-col space-y-2 ml-4">
+                          <select
+                            value={savedJob.status}
+                            onChange={(e) => updateSavedJob(savedJob.id, { status: e.target.value })}
+                            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-indigo-600 focus:border-transparent"
+                          >
+                            <option value="interested">Interested</option>
+                            <option value="applied">Applied</option>
+                            <option value="interviewing">Interviewing</option>
+                            <option value="offer">Offer</option>
+                            <option value="rejected">Rejected</option>
+                            <option value="archived">Archived</option>
+                          </select>
+                          <a
+                            href={savedJob.job_postings.source_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-3 py-2 text-center border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm"
+                          >
+                            View Job →
+                          </a>
+                          <button
+                            onClick={() => removeSavedJob(savedJob.id)}
+                            className="px-3 py-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors text-sm font-medium"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </div>
                     </div>
-                  ))
-                )}
-              </div>
-            </div>
-
-            {/* Quick Actions */}
-            <div className="bg-gradient-to-br from-indigo-600 to-purple-600 rounded-2xl p-6 text-white">
-              <h3 className="text-lg font-semibold mb-3">Need Help?</h3>
-              <p className="text-indigo-100 text-sm mb-4">
-                Get personalized networking strategies and referral templates.
-              </p>
-              <button className="bg-white text-indigo-600 px-4 py-2 rounded-lg text-sm font-medium hover:bg-gray-50 transition-colors">
-                Contact Support
-              </button>
-            </div>
-          </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
         </div>
       </div>
     </div>
