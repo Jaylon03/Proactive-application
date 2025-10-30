@@ -211,6 +211,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onSignOut }) => {
   const [jobTypeFilter, setJobTypeFilter] = useState('');
   const [activeTab, setActiveTab] = useState<'all' | 'saved'>('all');
   const [fetchExternal, setFetchExternal] = useState(false);
+  const [selectedJob, setSelectedJob] = useState<JobPosting | null>(null);
 
   const { jobs, loading: jobsLoading, refetch: refetchJobs } = useJobs({
     search: searchQuery,
@@ -266,6 +267,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onSignOut }) => {
   };
 
   const userEmail = user.email || 'No email provided';
+  
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -275,9 +277,9 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onSignOut }) => {
           <div className="flex justify-between items-center">
             <div className="flex items-center space-x-2">
               <div className="w-8 h-8 bg-gradient-to-r from-indigo-600 to-purple-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">EJ</span>
+                <span className="text-white font-bold text-sm">JL</span>
               </div>
-              <span className="text-xl font-bold text-gray-900">Entry-Level Jobs</span>
+              <span className="text-xl font-bold text-gray-900">Job LevelUp</span>
             </div>
             <div className="flex items-center space-x-4">
               <span className="text-gray-700 text-sm">Welcome, {userEmail}</span>
