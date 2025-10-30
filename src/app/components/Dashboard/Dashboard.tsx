@@ -210,7 +210,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onSignOut }) => {
   const [remoteOnly, setRemoteOnly] = useState(false);
   const [jobTypeFilter, setJobTypeFilter] = useState('');
   const [activeTab, setActiveTab] = useState<'all' | 'saved'>('all');
-  const [selectedJob, setSelectedJob] = useState<JobPosting | null>(null);
+  const [fetchExternal, setFetchExternal] = useState(false);
 
   const { jobs, loading: jobsLoading, refetch: refetchJobs } = useJobs({
     search: searchQuery,
@@ -218,6 +218,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onSignOut }) => {
     remote: remoteOnly || undefined,
     job_type: jobTypeFilter,
     limit: 50,
+    fetch_external: fetchExternal,
   });
 
   const {
@@ -247,7 +248,14 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onSignOut }) => {
   };
 
   const handleSearch = () => {
-    refetchJobs();
+    // Enable external fetching when user explicitly searches
+    setFetchExternal(true);
+    // Trigger refetch - this will fetch from Adzuna and then from database
+    setTimeout(() => {
+      refetchJobs();
+      // Reset fetch_external flag after search completes
+      setTimeout(() => setFetchExternal(false), 1000);
+    }, 100);
   };
 
   const handleClearFilters = () => {
