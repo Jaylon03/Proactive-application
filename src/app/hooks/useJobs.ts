@@ -39,6 +39,7 @@ interface JobFilters {
   seniority?: string
   limit?: number
   offset?: number
+  fetch_external?: boolean
 }
 
 export const useJobs = (filters: JobFilters = {}) => {
@@ -60,6 +61,7 @@ export const useJobs = (filters: JobFilters = {}) => {
       if (filters.seniority) params.append('seniority', filters.seniority)
       if (filters.limit) params.append('limit', String(filters.limit))
       if (filters.offset) params.append('offset', String(filters.offset))
+      if (filters.fetch_external !== undefined) params.append('fetch_external', String(filters.fetch_external))
 
       const response = await fetch(`/api/jobs?${params.toString()}`, {
         method: 'GET',
@@ -82,7 +84,7 @@ export const useJobs = (filters: JobFilters = {}) => {
     } finally {
       setLoading(false)
     }
-  }, [filters.search, filters.location, filters.remote, filters.job_type, filters.seniority, filters.limit, filters.offset])
+  }, [filters.search, filters.location, filters.remote, filters.job_type, filters.seniority, filters.limit, filters.offset, filters.fetch_external])
 
   useEffect(() => {
     fetchJobs()
