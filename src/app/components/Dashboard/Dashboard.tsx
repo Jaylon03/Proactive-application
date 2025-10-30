@@ -25,16 +25,67 @@ const formatTimeAgo = (dateString: string | null) => {
   const date = new Date(dateString);
   const now = new Date();
   const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-  
+
   if (diffInSeconds < 60) return 'just now';
   if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
   if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
   return `${Math.floor(diffInSeconds / 86400)}d ago`;
 };
 
-// Job Card Component
-const JobCard: React.FC<{ 
-  job: JobPosting; 
+// Compact Job List Item for left sidebar (LinkedIn style)
+const JobListItem: React.FC<{
+  job: JobPosting;
+  isSelected: boolean;
+  onClick: () => void;
+}> = ({ job, isSelected, onClick }) => {
+  return (
+    <div
+      onClick={onClick}
+      className={`p-4 border-b border-gray-200 cursor-pointer transition-all hover:bg-gray-50 ${
+        isSelected ? 'bg-blue-50 border-l-4 border-l-blue-600' : ''
+      }`}
+    >
+      <div className="flex items-start space-x-3">
+        {job.companies.logo_url && (
+          <img
+            src={job.companies.logo_url}
+            alt={job.companies.name}
+            className="w-12 h-12 rounded flex-shrink-0"
+          />
+        )}
+        <div className="flex-1 min-w-0">
+          <h3 className="font-semibold text-gray-900 text-sm mb-1 truncate">
+            {job.title}
+          </h3>
+          <p className="text-sm text-gray-700 mb-1 truncate">{job.companies.name}</p>
+          <div className="flex items-center text-xs text-gray-500 space-x-2 mb-2">
+            <span>{job.location || 'Remote'}</span>
+            {job.posted_date && (
+              <>
+                <span>•</span>
+                <span>{formatTimeAgo(job.posted_date)}</span>
+              </>
+            )}
+          </div>
+          <div className="flex flex-wrap gap-1">
+            <span className="px-2 py-0.5 bg-gray-100 text-gray-700 rounded text-xs">
+              {job.job_type}
+            </span>
+            {job.is_remote && (
+              <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs">
+                Remote
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Detailed Job Panel for right side (LinkedIn style)
+const JobDetailPanel: React.FC<{
+  job: JobPosting;
   onSave: (jobId: string) => void;
   isSaved: boolean;
 }> = ({ job, onSave, isSaved }) => {
@@ -47,101 +98,107 @@ const JobCard: React.FC<{
   };
 
   return (
-    <div className="bg-white border border-gray-200 rounded-xl p-6 hover:shadow-lg transition-all duration-300">
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex-1">
-          <div className="flex items-center space-x-2 mb-2">
+    <div className="h-full overflow-y-auto">
+      <div className="p-6">
+        {/* Header */}
+        <div className="flex items-start justify-between mb-6">
+          <div className="flex items-start space-x-4">
             {job.companies.logo_url && (
-              <img 
-                src={job.companies.logo_url} 
+              <img
+                src={job.companies.logo_url}
                 alt={job.companies.name}
-                className="w-8 h-8 rounded"
+                className="w-16 h-16 rounded"
               />
             )}
-            <h3 className="text-lg font-semibold text-gray-900">{job.title}</h3>
-          </div>
-          
-          <div className="flex items-center space-x-2 mb-3">
-            <span className="text-indigo-600 font-medium">{job.companies.name}</span>
-            {job.companies.industry && (
-              <>
-                <span className="text-gray-300">•</span>
-                <span className="text-gray-600 text-sm">{job.companies.industry}</span>
-              </>
-            )}
-          </div>
-
-          <div className="flex flex-wrap gap-2 mb-3">
-            <span className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
-              {job.job_type}
-            </span>
-            <span className="px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-xs font-medium">
-              {job.seniority_level}
-            </span>
-            {job.is_remote && (
-              <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium">
-                🌍 Remote
-              </span>
-            )}
-            {job.location && !job.is_remote && (
-              <span className="px-3 py-1 bg-gray-100 text-gray-800 rounded-full text-xs font-medium">
-                📍 {job.location}
-              </span>
-            )}
-          </div>
-
-          {job.tech_stack && job.tech_stack.length > 0 && (
-            <div className="flex flex-wrap gap-1 mb-3">
-              {job.tech_stack.slice(0, 5).map((tech, idx) => (
-                <span key={idx} className="px-2 py-1 bg-gray-50 text-gray-700 rounded text-xs border border-gray-200">
-                  {tech}
-                </span>
-              ))}
-              {job.tech_stack.length > 5 && (
-                <span className="px-2 py-1 text-gray-500 text-xs">
-                  +{job.tech_stack.length - 5} more
-                </span>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 mb-2">{job.title}</h1>
+              <p className="text-lg text-gray-700 mb-1">{job.companies.name}</p>
+              {job.companies.industry && (
+                <p className="text-sm text-gray-500">{job.companies.industry}</p>
               )}
             </div>
-          )}
-
-          <div className="text-sm text-gray-600 mb-2">
-            💰 {formatSalary(job.salary_min, job.salary_max, job.salary_currency)}
-          </div>
-
-          <div className="text-xs text-gray-400">
-            Posted {formatTimeAgo(job.posted_date)}
           </div>
         </div>
 
-        <div className="flex flex-col space-y-2">
+        {/* Action Buttons */}
+        <div className="flex space-x-3 mb-6">
           <button
             onClick={handleSave}
             disabled={saving || isSaved}
-            className={`px-4 py-2 rounded-lg font-medium transition-all ${
+            className={`px-6 py-2 rounded-full font-medium transition-all ${
               isSaved
-                ? 'bg-green-100 text-green-700 border border-green-200'
-                : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                ? 'bg-gray-100 text-gray-700 border border-gray-300'
+                : 'bg-blue-600 text-white hover:bg-blue-700'
             } ${saving ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
-            {saving ? '...' : (isSaved ? '✓ Saved' : 'Save')}
+            {saving ? 'Saving...' : (isSaved ? 'Saved' : 'Save')}
           </button>
           <a
             href={job.source_url}
             target="_blank"
             rel="noopener noreferrer"
-            className="px-4 py-2 text-center border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm"
+            className="px-6 py-2 bg-blue-600 text-white rounded-full hover:bg-blue-700 transition-colors font-medium"
           >
-            View Job →
+            Apply
           </a>
         </div>
-      </div>
 
-      {job.description && (
-        <p className="text-sm text-gray-600 line-clamp-2 mt-2">
-          {job.description}
-        </p>
-      )}
+        {/* Job Details */}
+        <div className="space-y-6">
+          {/* Meta Information */}
+          <div className="flex flex-wrap gap-4 text-sm">
+            <div className="flex items-center space-x-2">
+              <span className="font-medium text-gray-700">Location:</span>
+              <span className="text-gray-600">{job.location || 'Remote'}</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <span className="font-medium text-gray-700">Type:</span>
+              <span className="text-gray-600">{job.job_type}</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <span className="font-medium text-gray-700">Level:</span>
+              <span className="text-gray-600">{job.seniority_level}</span>
+            </div>
+          </div>
+
+          {/* Salary */}
+          <div>
+            <h3 className="font-semibold text-gray-900 mb-2">Salary Range</h3>
+            <p className="text-gray-700">{formatSalary(job.salary_min, job.salary_max, job.salary_currency)}</p>
+          </div>
+
+          {/* Tech Stack */}
+          {job.tech_stack && job.tech_stack.length > 0 && (
+            <div>
+              <h3 className="font-semibold text-gray-900 mb-3">Skills</h3>
+              <div className="flex flex-wrap gap-2">
+                {job.tech_stack.map((tech, idx) => (
+                  <span key={idx} className="px-3 py-1.5 bg-gray-100 text-gray-800 rounded-full text-sm border border-gray-200">
+                    {tech}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Description */}
+          {job.description && (
+            <div>
+              <h3 className="font-semibold text-gray-900 mb-3">About the job</h3>
+              <div className="prose prose-sm max-w-none text-gray-700">
+                <p className="whitespace-pre-line">{job.description}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Posted Date */}
+          <div className="pt-4 border-t border-gray-200">
+            <p className="text-xs text-gray-500">
+              Posted {formatTimeAgo(job.posted_date)}
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
@@ -164,13 +221,20 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onSignOut }) => {
     fetch_external: fetchExternal,
   });
 
-  const { 
-    savedJobs, 
-    loading: savedJobsLoading, 
-    saveJob, 
+  const {
+    savedJobs,
+    loading: savedJobsLoading,
+    saveJob,
     updateSavedJob,
-    removeSavedJob 
+    removeSavedJob
   } = useSavedJobs();
+
+  // Auto-select first job when jobs load (LinkedIn behavior)
+  React.useEffect(() => {
+    if (jobs.length > 0 && !selectedJob) {
+      setSelectedJob(jobs[0]);
+    }
+  }, [jobs, selectedJob]);
 
   // Create a Set of saved job IDs for quick lookup
   const savedJobIds = new Set(savedJobs.map(sj => sj.job_id));
@@ -338,39 +402,66 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onSignOut }) => {
           )}
         </div>
 
-        {/* Content */}
-        <div className="bg-white rounded-2xl shadow-sm p-6">
-          {activeTab === 'all' ? (
-            <>
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">
-                Entry-Level Software Engineering Jobs
-              </h2>
+        {/* Content - Two Column Layout (LinkedIn Style) */}
+        {activeTab === 'all' ? (
+          <div className="flex gap-0 bg-white rounded-2xl shadow-sm overflow-hidden" style={{ height: 'calc(100vh - 400px)' }}>
+            {/* Left Sidebar - Job List */}
+            <div className="w-2/5 border-r border-gray-200 overflow-y-auto">
+              <div className="sticky top-0 bg-white border-b border-gray-200 px-4 py-3 z-10">
+                <h2 className="text-lg font-semibold text-gray-900">
+                  Top job picks for you
+                </h2>
+                <p className="text-sm text-gray-500">{jobs.length} results</p>
+              </div>
+
               {jobsLoading ? (
-                <div className="grid grid-cols-1 gap-4">
-                  {[1, 2, 3].map(i => (
-                    <div key={i} className="bg-gray-100 rounded-xl h-48 animate-pulse"></div>
+                <div>
+                  {[1, 2, 3, 4, 5].map(i => (
+                    <div key={i} className="p-4 border-b border-gray-200">
+                      <div className="bg-gray-100 rounded h-24 animate-pulse"></div>
+                    </div>
                   ))}
                 </div>
               ) : jobs.length === 0 ? (
-                <div className="text-center py-12">
+                <div className="text-center py-12 px-4">
                   <div className="text-4xl mb-4">🔍</div>
                   <p className="text-gray-500 mb-2">No jobs found</p>
                   <p className="text-sm text-gray-400">Try adjusting your filters</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 gap-4">
+                <div>
                   {jobs.map(job => (
-                    <JobCard
+                    <JobListItem
                       key={job.id}
                       job={job}
-                      onSave={handleSaveJob}
-                      isSaved={savedJobIds.has(job.id)}
+                      isSelected={selectedJob?.id === job.id}
+                      onClick={() => setSelectedJob(job)}
                     />
                   ))}
                 </div>
               )}
-            </>
-          ) : (
+            </div>
+
+            {/* Right Panel - Job Details */}
+            <div className="flex-1 bg-gray-50 overflow-y-auto">
+              {selectedJob ? (
+                <JobDetailPanel
+                  job={selectedJob}
+                  onSave={handleSaveJob}
+                  isSaved={savedJobIds.has(selectedJob.id)}
+                />
+              ) : jobs.length > 0 ? (
+                <div className="h-full flex items-center justify-center text-gray-500">
+                  <div className="text-center">
+                    <div className="text-5xl mb-4">👈</div>
+                    <p className="text-lg">Select a job to view details</p>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          </div>
+        ) : (
+          <div className="bg-white rounded-2xl shadow-sm p-6">
             <>
               <h2 className="text-2xl font-bold text-gray-900 mb-6">
                 Your Saved Jobs
@@ -465,8 +556,8 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onSignOut }) => {
                 </div>
               )}
             </>
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );
