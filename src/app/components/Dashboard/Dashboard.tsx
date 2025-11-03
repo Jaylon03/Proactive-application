@@ -356,7 +356,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onSignOut }) => {
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
                   placeholder="Search jobs..."
-                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-600 focus:border-transparent"
+                  className="text-black px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-600 focus:border-transparent"
                 />
                 <input
                   type="text"
@@ -364,12 +364,12 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onSignOut }) => {
                   onChange={(e) => setLocationFilter(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
                   placeholder="Location..."
-                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-600 focus:border-transparent"
+                  className="text-black px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-600 focus:border-transparent"
                 />
                 <select
                   value={jobTypeFilter}
                   onChange={(e) => setJobTypeFilter(e.target.value)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-600 focus:border-transparent"
+                  className="text-black px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-600 focus:border-transparent"
                 >
                   <option value="">All Job Types</option>
                   <option value="full-time">Full-Time</option>
@@ -406,7 +406,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onSignOut }) => {
 
         {/* Content - Two Column Layout (LinkedIn Style) */}
         {activeTab === 'all' ? (
-          <div className="flex gap-0 bg-white rounded-2xl shadow-sm overflow-hidden" style={{ height: 'calc(100vh - 400px)' }}>
+          <div className="flex gap-0 bg-white rounded-2xl shadow-sm overflow-hidden" style={{ height: 'calc(150vh - 400px)' }}>
             {/* Left Sidebar - Job List */}
             <div className="w-2/5 border-r border-gray-200 overflow-y-auto">
               <div className="sticky top-0 bg-white border-b border-gray-200 px-4 py-3 z-10">
